@@ -12,7 +12,7 @@ endif()
 project ("Arena_and_Pool_Allocators")
 
 # Add source to this project's executable.
-add_executable (Arena_and_Pool_Allocators "Arena_and_Pool_Allocators.cpp" "Arena_and_Pool_Allocators.h" "Arena.cpp")
+add_executable (Arena_and_Pool_Allocators "MemoryPool.hpp" "Arena_and_Pool_Allocators.h" )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Arena_and_Pool_Allocators PROPERTY CXX_STANDARD 20)
