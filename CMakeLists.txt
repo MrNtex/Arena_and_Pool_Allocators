@@ -1,21 +1,21 @@
-﻿# CMakeList.txt : CMake project for Arena_and_Pool_Allocators, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.14)
+project(ArenaAllocatorBenchmark CXX)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG")
 
-project ("Arena_and_Pool_Allocators")
+include_directories(include)
 
-# Add source to this project's executable.
-add_executable (Arena_and_Pool_Allocators "MemoryPool.hpp" "Arena_and_Pool_Allocators.h" )
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing" FORCE)
+include(FetchContent)
+FetchContent_Declare(
+  benchmark
+  GIT_REPOSITORY https://github.com/google/benchmark.git
+  GIT_TAG v1.8.3
+)
+FetchContent_MakeAvailable(benchmark)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Arena_and_Pool_Allocators PROPERTY CXX_STANDARD 20)
-endif()
+add_executable(arena_bench benchmarks/arena_benchmark.cpp)
 
-# TODO: Add tests and install targets if needed.
+target_link_libraries(arena_bench PRIVATE benchmark::benchmark)

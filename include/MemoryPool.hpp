@@ -13,15 +13,15 @@ struct Arena
 	template<typename T, typename... Args>
 	T* allocate(Args&&... args)
 	{
-		static_assert(std::is_trivially_destructible_v<T>, "Arena allocator only supports trivially destructible types.")
+		static_assert(std::is_trivially_destructible_v<T>, "Arena allocator only supports trivially destructible types.");
 
-			if (std::align(alignof(T), sizeof(T), current, space_left))
-			{
-				T* obj = new (current) T(std::forward<Args>(args)...);
-				current = static_cast<std::byte*>(current) + sizeof(T);
-				space_left -= sizeof(T);
-				return obj;
-			}
+		if (std::align(alignof(T), sizeof(T), current, space_left))
+		{
+			T* obj = new (current) T(std::forward<Args>(args)...);
+			current = static_cast<std::byte*>(current) + sizeof(T);
+			space_left -= sizeof(T);
+			return obj;
+		}
 		throw std::bad_alloc();
 		//return nullptr;
 	}
