@@ -32,3 +32,47 @@ struct Arena
 		space_left = BlockSize;
 	}
 };
+
+template<typename T, std::size_t PoolSize = 1024>
+class TypedPoolAllocator
+{
+	struct Block
+	{
+		Block* next;
+	};
+
+	static constexpr std::size_t BlockSize = std::max(sizeof(T), sizeof(Block));
+	static constexpr std::size_t BlockAligment = std::max(alignof(T), alignof(Block));
+
+	alignas(BlockAligment) std::byte buffer[BlockSize * PoolSize];
+	Block* head{ nullptr };
+
+public:
+	TypedPoolAllocator()
+	{
+		for (std::size_t i = 0; i < PoolSize; ++i)
+		{
+			auto* node = new (buffer + i * BlockSize) Block{head};
+			head = node;
+		}
+	}
+
+	template<typename... Args>
+	T* allocate(Args&&... args)
+	{
+		if (!head) throw std::bad_alloc();
+		
+		Block* free_block = head;
+		head = head->next;
+
+		return new (free_block) T(std::forward<Args>(args)...);
+	}
+
+	void deallocate(T* ptr)
+	{
+		ptr->~T();
+
+		Block* node = new (ptr) Block{ head };
+		head = node;
+	}
+};

@@ -1,6 +1,5 @@
 #include <benchmark/benchmark.h>
-#include <vector>
-#include "MemoryPool.hpp"
+#include "MemoryPool.hpp" 
 
 struct Order {
     char type;
@@ -10,19 +9,19 @@ struct Order {
     Order(char t, double p, int s) : type(t), price(p), size(s) {}
 };
 
-constexpr int ALLOCATIONS_PER_CYCLE = 1000;
+constexpr int ALLOCATIONS_PER_CYCLE = 10000;
 
 static void BM_StandardMalloc(benchmark::State& state) {
     for (auto _ : state) {
-        std::vector<Order*> orders;
-        orders.reserve(ALLOCATIONS_PER_CYCLE);
+        Order* orders[ALLOCATIONS_PER_CYCLE];
+
         for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
-            Order* order = new Order{ 'B', 150.50, 100 };
-            benchmark::DoNotOptimize(order);
-            orders.push_back(order);
+            orders[i] = new Order('B', 150.50, 100);
+            benchmark::DoNotOptimize(orders[i]);
         }
-        for (auto* ptr : orders) {
-            delete ptr;
+
+        for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
+            delete orders[i];
         }
     }
 }
@@ -30,14 +29,36 @@ BENCHMARK(BM_StandardMalloc);
 
 static void BM_ArenaAllocator(benchmark::State& state) {
     Arena<sizeof(Order)* ALLOCATIONS_PER_CYCLE + 1024> arena;
+
     for (auto _ : state) {
+        Order* orders[ALLOCATIONS_PER_CYCLE];
+
         for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
-            Order* order = arena.allocate<Order>('B', 150.50, 100);
-            benchmark::DoNotOptimize(order);
+            orders[i] = arena.allocate<Order>('B', 150.50, 100);
+            benchmark::DoNotOptimize(orders[i]);
         }
+
         arena.reset();
     }
 }
 BENCHMARK(BM_ArenaAllocator);
+
+static void BM_PoolAllocator(benchmark::State& state) {
+    TypedPoolAllocator<Order, ALLOCATIONS_PER_CYCLE> pool;
+
+    for (auto _ : state) {
+        Order* orders[ALLOCATIONS_PER_CYCLE];
+
+        for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
+            orders[i] = pool.allocate('B', 150.50, 100);
+            benchmark::DoNotOptimize(orders[i]);
+        }
+
+        for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
+            pool.deallocate(orders[i]);
+        }
+    }
+}
+BENCHMARK(BM_PoolAllocator);
 
 BENCHMARK_MAIN();
