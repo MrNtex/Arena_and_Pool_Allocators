@@ -43,7 +43,7 @@ static void BM_ArenaAllocator(benchmark::State& state) {
 }
 BENCHMARK(BM_ArenaAllocator);
 
-static void BM_PoolAllocator(benchmark::State& state) {
+static void BM_TypedPoolAllocator(benchmark::State& state) {
     TypedPoolAllocator<Order, ALLOCATIONS_PER_CYCLE> pool;
 
     for (auto _ : state) {
@@ -59,6 +59,26 @@ static void BM_PoolAllocator(benchmark::State& state) {
         }
     }
 }
-BENCHMARK(BM_PoolAllocator);
+BENCHMARK(BM_TypedPoolAllocator);
+
+static void BM_UnTypedPoolAllocator(benchmark::State& state) {
+    MemoryPool<ALLOCATIONS_PER_CYCLE> pool;
+
+    for (auto _ : state) {
+        Order* orders[ALLOCATIONS_PER_CYCLE];
+
+        for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
+            void* raw = pool.allocate(sizeof(Order));
+            orders[i] = new (raw) Order('B', 150.50, 100);
+            benchmark::DoNotOptimize(orders[i]);
+        }
+
+        for (int i = 0; i < ALLOCATIONS_PER_CYCLE; ++i) {
+            orders[i]->~Order();
+            pool.deallocate(orders[i], sizeof(Order));
+        }
+    }
+}
+BENCHMARK(BM_UnTypedPoolAllocator);
 
 BENCHMARK_MAIN();

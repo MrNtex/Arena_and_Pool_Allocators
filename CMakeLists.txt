@@ -16,7 +16,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-add_executable(arena_bench benchmarks/arena_benchmark.cpp)
-target_link_libraries(arena_bench PRIVATE benchmark::benchmark)
+add_executable(uniform_bench benchmarks/uniform_data_benchmark.cpp)
+add_executable(nonuniform_bench benchmarks/nonuniform_data_benchmark.cpp)
+target_link_libraries(uniform_bench PRIVATE benchmark::benchmark)
+target_link_libraries(nonuniform_bench PRIVATE benchmark::benchmark)
 
 add_executable(memory_pool_test testing/memorypooltest.cpp)
