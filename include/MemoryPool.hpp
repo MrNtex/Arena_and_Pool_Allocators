@@ -96,6 +96,12 @@ struct Arena {
 template <class T, std::size_t TotalSize>
 struct STLArenaAllocator {
     typedef T value_type;
+
+    template <class U>
+    struct rebind {
+        typedef STLArenaAllocator<U, TotalSize> other;
+    };
+
     Arena<TotalSize>* arena;
 
     STLArenaAllocator(Arena<TotalSize>* a) : arena(a) {}
@@ -270,6 +276,12 @@ public:
 template <class T, std::size_t PoolSize>
 struct STLPoolAllocator {
     typedef T value_type;
+
+    template <class U>
+    struct rebind {
+        typedef STLPoolAllocator<U, PoolSize> other;
+    };
+
     MemoryPool<PoolSize>* pool;
 
     STLPoolAllocator(MemoryPool<PoolSize>* p) : pool(p) {}

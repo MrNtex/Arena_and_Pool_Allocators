@@ -18,6 +18,8 @@ FetchContent_MakeAvailable(benchmark)
 
 add_executable(uniform_bench benchmarks/uniform_data_benchmark.cpp)
 add_executable(nonuniform_bench benchmarks/nonuniform_data_benchmark.cpp)
+add_executable(stl_contiguous_benchmark benchmarks/stl_contiguous_benchmark.cpp)
+target_link_libraries(stl_contiguous_benchmark PRIVATE benchmark::benchmark)
 target_link_libraries(uniform_bench PRIVATE benchmark::benchmark)
 target_link_libraries(nonuniform_bench PRIVATE benchmark::benchmark)
 
