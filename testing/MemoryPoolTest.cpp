@@ -67,6 +67,24 @@ void ArenaAllocator_ResetsSuccessfully() {
     std::cout << "[SUCCESS] ArenaAllocator passed nuclear reset tests.\n";
 }
 
+void ArenaAllocator_MoveSemantics() {
+    Arena<128> arena1;
+    int* p1 = arena1.allocate<int>(42);
+
+    Arena<128> arena2(std::move(arena1));
+    assert(arena1.buffer == nullptr && "Arena1 buffer was not nullified during move construction!");
+    int* p2 = arena2.allocate<int>(99);
+    assert(*p2 == 99 && "Arena2 failed to allocate after taking ownership!");
+    Arena<128> arena3;
+    arena3.allocate<int>(1);
+    arena3 = std::move(arena2);
+    assert(arena2.buffer == nullptr && "Arena2 buffer was not nullified during move assignment!");
+    int* p3 = arena3.allocate<int>(100);
+    assert(*p3 == 100 && "Arena3 failed to allocate after move assignment!");
+
+    std::cout << "[SUCCESS] ArenaAllocator passed move semantics test.\n";
+}
+
 void TypedPoolAllocator_AllocatesObjects() {
     TypedPoolAllocator<TestObject, 5> pool;
 
@@ -104,6 +122,19 @@ void TypedPoolAllocator_HandlesPoolExhaustion() {
     catch (const std::bad_alloc&) {
 		std::cout << "[SUCCESS] TypedPoolAllocator correctly threw on pool exhaustion.\n";
 	}
+}
+
+void TypedPoolAllocator_MoveSemantics() {
+    TypedPoolAllocator<TestObject, 5> pool1;
+    TestObject* obj1 = pool1.allocate();
+    TypedPoolAllocator<TestObject, 5> pool2(std::move(pool1));
+    TestObject* obj2 = pool2.allocate();
+
+    assert(obj2 != nullptr && "TypedPool failed to transfer free-list head during move!");
+
+    pool2.deallocate(obj1);
+    pool2.deallocate(obj2);
+    std::cout << "[SUCCESS] TypedPoolAllocator passed free-list ownership transfers.\n";
 }
 
 void UntypedMemoryPool_AllocatesDifferentSizedElements() {
@@ -169,22 +200,38 @@ void UntypedMemoryPool_DeallocatesMemory() {
     std::cout << "[SUCCESS] Untyped MemoryPool allocates different sized elements\n";
 }
 
+void UntypedMemoryPool_MoveSemantics() {
+    MemoryPool<100> pool1;
+    void* ptr1 = pool1.allocate(24);
+    MemoryPool<100> pool2(std::move(pool1));
+
+    void* ptr2 = pool2.allocate(64);
+
+    assert(ptr2 != nullptr && "UntypedPool failed to allocate after move!");
+    pool2.deallocate(ptr1, 24);
+    pool2.deallocate(ptr2, 64);
+    std::cout << "[SUCCESS] Untyped MemoryPool passed composite move semantics.\n";
+}
+
 
 int main() {
     ArenaAllocator_AllocatesObjects();
 	ArenaAllocator_RespectsAlignment();
 	ArenaAllocator_HandlesExhaustion();
 	ArenaAllocator_ResetsSuccessfully();
+    ArenaAllocator_MoveSemantics();
 
 	TypedPoolAllocator_AllocatesObjects();
 	TypedPoolAllocator_DeallocatesObjects();
 	TypedPoolAllocator_HandlesPoolExhaustion();
+    TypedPoolAllocator_MoveSemantics();
 
     UntypedMemoryPool_AllocatesDifferentSizedElements();
     UntypedMemoryPool_MemoryIsWritableAndAligned();
     UntypedMemoryPool_HandlesPoolExhaustion();
     UntypedMemoryPool_FallbackToOSAllocation();
     UntypedMemoryPool_DeallocatesMemory();
+    UntypedMemoryPool_MoveSemantics();
 
     return 0;
 }
