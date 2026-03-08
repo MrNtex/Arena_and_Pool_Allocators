@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <cstdlib>
+#include <cassert>
 
 inline void* malligned_alloc(std::size_t alignment, std::size_t size) {
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -41,9 +42,28 @@ struct Arena {
         current = buffer;
     }
 
-    ~Arena() { malligned_free(buffer); }
+    ~Arena() { if (buffer) { malligned_free(buffer); } }
     Arena(const Arena&) = delete;
     Arena& operator=(const Arena&) = delete;
+
+    Arena(Arena&& other) noexcept : buffer(other.buffer), current(other.current), space_left(other.space_left) {
+		other.buffer = nullptr;
+		other.current = nullptr;
+		other.space_left = 0;
+	}
+    Arena& operator=(Arena&& other) noexcept {
+        if (this != &other) {
+			if (buffer) malligned_free(buffer);
+			buffer = other.buffer;
+			current = other.current;
+			space_left = other.space_left;
+
+			other.buffer = nullptr;
+			other.current = nullptr;
+			other.space_left = 0;
+		}
+		return *this;
+	}
 
     template<typename T, typename... Args>
     T* allocate(Args&&... args) {
@@ -73,6 +93,35 @@ struct Arena {
     }
 };
 
+template <class T, std::size_t TotalSize>
+struct STLArenaAllocator {
+    typedef T value_type;
+    Arena<TotalSize>* arena;
+
+    STLArenaAllocator(Arena<TotalSize>* a) : arena(a) {}
+
+    template <class U>
+    STLArenaAllocator(const STLArenaAllocator<U, TotalSize>& other) : arena(other.arena) {}
+
+    T* allocate(std::size_t n) {
+        return static_cast<T*>(arena->allocate_raw(n * sizeof(T), alignof(T)));
+    }
+
+    void deallocate(T* p, std::size_t n) {
+        // No-op. The Arena cannot deallocate individual blocks.
+        // The memory is reclaimed only when Arena::reset() is called globally.
+    }
+};
+
+template <class T, class U, std::size_t TotalSize>
+bool operator==(const STLArenaAllocator<T, TotalSize>& a, const STLArenaAllocator<U, TotalSize>& b) {
+    return a.arena == b.arena;
+}
+template <class T, class U, std::size_t TotalSize>
+bool operator!=(const STLArenaAllocator<T, TotalSize>& a, const STLArenaAllocator<U, TotalSize>& b) {
+    return !(a == b);
+}
+
 template<typename T, std::size_t PoolSize = 1024>
 class TypedPoolAllocator {
     struct Block { Block* next; };
@@ -98,6 +147,23 @@ public:
 
     TypedPoolAllocator(const TypedPoolAllocator&) = delete;
     TypedPoolAllocator& operator=(const TypedPoolAllocator&) = delete;
+
+    TypedPoolAllocator(TypedPoolAllocator&& other) noexcept : buffer(other.buffer), head(other.head) {
+		other.buffer = nullptr;
+		other.head = nullptr;
+	}
+
+    TypedPoolAllocator& operator=(TypedPoolAllocator&& other) noexcept {
+        if (this != &other) {
+            if (buffer) { malligned_free(buffer); }
+            this->buffer = other.buffer;
+            this->head = other.head;
+
+            other.buffer = nullptr;
+            other.head = nullptr;
+        }
+        return *this;
+    }
 
     template<typename... Args>
     T* allocate(Args&&... args) {
@@ -145,6 +211,22 @@ public:
     SizeClassPool(const SizeClassPool&) = delete;
     SizeClassPool& operator=(const SizeClassPool&) = delete;
 
+    SizeClassPool(SizeClassPool&& other) noexcept : buffer(other.buffer), head(other.head) {
+        other.buffer = nullptr;
+        other.head = nullptr;
+    }
+    SizeClassPool& operator=(SizeClassPool&& other) noexcept {
+        if (this != &other) {
+            if (buffer) { malligned_free(buffer); }
+			this->buffer = other.buffer;
+			this->head = other.head;
+
+			other.buffer = nullptr;
+			other.head = nullptr;
+		}
+		return *this;
+	}
+
     void* allocate() {
         if (!head) throw std::bad_alloc();
         Block* free_block = head;
@@ -184,3 +266,35 @@ public:
         else ::operator delete(ptr);
     }
 };
+
+template <class T, std::size_t PoolSize>
+struct STLPoolAllocator {
+    typedef T value_type;
+    MemoryPool<PoolSize>* pool;
+
+    STLPoolAllocator(MemoryPool<PoolSize>* p) : pool(p) {}
+
+    template <class U>
+    STLPoolAllocator(const STLPoolAllocator<U, PoolSize>& other) : pool(other.pool) {}
+
+    T* allocate(std::size_t n) {
+        assert(n == 1 && "STLPoolAllocator (Free List) strictly requires single-node (eg. std::map) allocations!");
+
+        return static_cast<T*>(pool->allocate(sizeof(T)));
+    }
+
+    void deallocate(T* p, std::size_t n) {
+        assert(n == 1 && "STLPoolAllocator (Free List) strictly requires single-node deallocations!");
+
+        pool->deallocate(p, sizeof(T));
+    }
+};
+
+template <class T, class U, std::size_t PoolSize>
+bool operator==(const STLPoolAllocator<T, PoolSize>& a, const STLPoolAllocator<U, PoolSize>& b) {
+    return a.pool == b.pool;
+}
+template <class T, class U, std::size_t PoolSize>
+bool operator!=(const STLPoolAllocator<T, PoolSize>& a, const STLPoolAllocator<U, PoolSize>& b) {
+    return !(a == b);
+}
