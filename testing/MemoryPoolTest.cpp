@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <cstdint>
 #include "MemoryPool.hpp"
 
 
