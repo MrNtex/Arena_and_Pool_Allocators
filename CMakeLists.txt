@@ -23,4 +23,4 @@ target_link_libraries(stl_contiguous_benchmark PRIVATE benchmark::benchmark)
 target_link_libraries(uniform_bench PRIVATE benchmark::benchmark)
 target_link_libraries(nonuniform_bench PRIVATE benchmark::benchmark)
 
-add_executable(memory_pool_test testing/memorypooltest.cpp)
+add_executable(memory_pool_test testing/MemoryPoolTest.cpp)

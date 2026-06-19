@@ -1,0 +1,37 @@
+name: CMake build on ino_dev
+
+on:
+  push:
+    branches:
+      - ino_dev
+  pull_request:
+    branches:
+      - ino_dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build project
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Run memory pool test
+        run: ./build/memory_pool_test
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: allocator-build
+          path: |
+            build/uniform_bench
+            build/nonuniform_bench
+            build/stl_contiguous_benchmark
+            build/memory_pool_test
+          if-no-files-found: error
